@@ -74,6 +74,11 @@ void StartTaskButtonController(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+GPIO_PinState buttonStatus;   // variable for button state
+int16_t motorSpeed;           // current speed of motor(0-255 pwm)
+char speedFormat;             // "bool" variable for speed format
+
 /* USER CODE END 0 */
 
 /**
@@ -105,6 +110,12 @@ int main(void)
   MX_ADC1_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+  // create threads for tasks
+  defaultTaskHandle 		= osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+  motorControllerHandle 	= osThreadNew(StartTaskMotorController, NULL, &motorController_attributes);
+  UARTControllerHandle 		= osThreadNew(StartTaskUARTController, NULL, &UARTController_attributes);
+  buttonControlleHandle 		= osThreadNew(StartTaskButtonController, NULL, &buttonControlle_attributes);
+  
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -368,6 +379,28 @@ void StartDefaultTask(void *argument)
 void StartTaskMotorController(void *argument)
 {
   /* USER CODE BEGIN StartTaskMotorController */
+
+	for(;;)
+	{
+		HAL_ADC_Start(&hadc1); // start the adc
+		HAL_ADC_PollForConversion(&hadc1, 100); // poll for conversion
+
+		uint16_t adc_val = HAL_ADC_GetValue(&hadc1) / 16; // get the adc value
+
+		HAL_ADC_Stop(&hadc1); // stop adc
+		if(buttonStatus == GPIO_PIN_SET){           // check is button pressed
+		  if(adc_val >= motorSpeed) motorSpeed++;   // smooth change speed of motor
+		  else motorSpeed--;
+		}
+		else{
+		  motorSpeed--;
+		  if(motorSpeed < 0) motorSpeed = 0;        // min value
+		}
+		TIM2->CCR1 = motorSpeed;                    // set pwm for motor speed
+		HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);   // pwm start
+		osDelay(10);                                // some sleep)
+	}
+
   /* USER CODE END StartTaskMotorController */
 }
 
@@ -384,6 +417,26 @@ void StartTaskUARTController(void *argument)
 void StartTaskButtonController(void *argument)
 {
   /* USER CODE BEGIN StartTaskButtonController */
+
+	uint32_t time_button_pressed;
+	for(;;)
+	{
+		if(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6) == GPIO_PIN_SET)
+		{
+			time_button_pressed = HAL_GetTick();
+			while(time_button_pressed + 50 < HAL_GetTick()) osDelay(1);
+			if(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6) == GPIO_PIN_SET){
+				buttonStatus = GPIO_PIN_SET;
+			}
+		}
+		else{
+			buttonStatus = GPIO_PIN_RESET;
+		}
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, buttonStatus);
+
+		osDelay(1);
+	}
+
   /* USER CODE END StartTaskButtonController */
 }
 
