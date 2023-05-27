@@ -418,7 +418,7 @@ void StartTaskButtonController(void *argument)
 {
   /* USER CODE BEGIN StartTaskButtonController */
 
-	uint32_t time_button_pressed;
+	uint32_t time_button_pressed; // var for save last button pressed time
 	for(;;)
 	{
 		if(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6) == GPIO_PIN_SET)
