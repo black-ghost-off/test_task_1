@@ -3,6 +3,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "stdio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -68,6 +69,8 @@ void StartDefaultTask(void *argument);
 void StartTaskMotorController(void *argument);
 void StartTaskUARTController(void *argument);
 void StartTaskButtonController(void *argument);
+
+long map(long x, long in_min, long in_max, long out_min, long out_max); // function for mapping value
 
 /* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
@@ -364,6 +367,12 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+long map(long x, long in_min, long in_max, long out_min, long out_max)
+{
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -409,6 +418,23 @@ void StartTaskMotorController(void *argument)
 void StartTaskUARTController(void *argument)
 {
   /* USER CODE BEGIN StartTaskUARTController */
+  uint8_t Rx_data[1];             // buffer for receive from uart some data
+  for(;;)
+  {
+    osDelay(1);
+    HAL_StatusTypeDef status_receive = HAL_UART_Receive(&huart2, Rx_data, 1, 100);       // receive data from uart and proccesing this data only if HAL_OK(it`s mean what we have some new data)
+    if(status_receive == HAL_OK){                                   
+    	if(Rx_data[0] == 0x30) speedFormat = 0;                                            // check if this data is symbol "1" or "0"(ascii) and change speedformat beetwen mph and km/h
+    	else if(Rx_data[0] == 0x31) speedFormat = 1;
+    	else;
+
+    }
+    char output_buffer[15]; //Data to send                                                // buffer for info about speed
+    memset(output_buffer, 0, sizeof(output_buffer));                                      // clean buffer
+    if(speedFormat) sprintf(output_buffer, "%d km/h\n\r", (int) (map(motorSpeed, 0, 255, 0, 120)));     // formating data about speed with function sprint(from stdio.h)
+    else			sprintf(output_buffer, "%d mph\n\r",  (int) (map(motorSpeed, 0, 255, 0, 120) * 0.62) );
+    HAL_UART_Transmit(&huart2,output_buffer,sizeof(output_buffer),10);                    // Send info     
+  }
   /* USER CODE END StartTaskUARTController */
 }
 
@@ -421,20 +447,20 @@ void StartTaskButtonController(void *argument)
 	uint32_t time_button_pressed; // var for save last button pressed time
 	for(;;)
 	{
-		if(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6) == GPIO_PIN_SET)
+		if(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6) == GPIO_PIN_SET)       // Read pin value(is button pressed)
 		{
-			time_button_pressed = HAL_GetTick();
-			while(time_button_pressed + 50 < HAL_GetTick()) osDelay(1);
-			if(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6) == GPIO_PIN_SET){
-				buttonStatus = GPIO_PIN_SET;
+			time_button_pressed = HAL_GetTick();                        // Save time of pressed in ms for timeout
+			while(time_button_pressed + 50 < HAL_GetTick()) osDelay(1); // timeout button press
+			if(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6) == GPIO_PIN_SET){    // if button stay pressed, turn on motor
+				buttonStatus = GPIO_PIN_SET;                              // set value for global variable 
 			}
 		}
 		else{
-			buttonStatus = GPIO_PIN_RESET;
+			buttonStatus = GPIO_PIN_RESET;                              
 		}
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, buttonStatus);
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, buttonStatus);           // Turn on pin for turn on motor
 
-		osDelay(1);
+		osDelay(1);                                                   // sleep
 	}
 
   /* USER CODE END StartTaskButtonController */
