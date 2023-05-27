@@ -118,7 +118,9 @@ int main(void)
   motorControllerHandle 	= osThreadNew(StartTaskMotorController, NULL, &motorController_attributes);
   UARTControllerHandle 		= osThreadNew(StartTaskUARTController, NULL, &UARTController_attributes);
   buttonControlleHandle 		= osThreadNew(StartTaskButtonController, NULL, &buttonControlle_attributes);
-  
+
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);           // direction of motor
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -458,7 +460,6 @@ void StartTaskButtonController(void *argument)
 		else{
 			buttonStatus = GPIO_PIN_RESET;                              
 		}
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, buttonStatus);           // Turn on pin for turn on motor
 
 		osDelay(1);                                                   // sleep
 	}
