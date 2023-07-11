@@ -1,4 +1,4 @@
-# Embrox Solutions test task
+# test task
 
 ### The test task from embrox solutions was performed by me Yevhen Boichuk<br>Completed tasks in accordance with the terms of reference<br>Generation in STMCUBEMX under STM32F401CCU (the reason is that this is the only chip I have in my immediate reach at the moment).
 
